@@ -1,133 +1,110 @@
-// This is a simplified example config file for quickstart
-// Some not frequently used features are omitted/commented out here
-// For a full-featured example, please refer to `uptime.config.full.ts`
+// UptimeFlare 配置 —— 已清理模板占位符（示例监控、假 webhook、错误 maintenance）
+// 字段全量说明见同目录 uptime.config.full.ts，或 Wiki:
+// https://github.com/lyc8503/UptimeFlare/wiki/Configuration
 
 // Don't edit this line
 import { MaintenanceConfig, PageConfig, WorkerConfig } from './types/config'
 
 const pageConfig: PageConfig = {
-  // Title for your status page
-  title: "Tenyunw dial testing",
-  // Links shown at the header of your status page, could set `highlight` to `true`
-  links: [
-    { link: 'http://112.90.156.82:61180/v1/chat/completions', label: 'test' },
-    { link: 'https://dev.abyssai.sg/', label: 'Blog', highlight: true },
-  ],
+  // 状态页标题（浏览器标签页、页头都取这里）
+  title: 'Tenyunw 拨测状态页',
+  // 页头右上角链接，highlight: true 会显示成高亮按钮
+  links: [{ link: 'https://dev.abyssai.sg/', label: 'Blog', highlight: true }],
+  // [可选] 监控分组。只有 2 个监控时没必要；多了以后可以按业务分组
+  // 注意：一旦配置了 group，没列进去的 monitor 会在页面上隐藏（但仍在后台探测）
+  // group: {
+  //   '🌐 站点': ['abyssai_site'],
+  //   '🔌 网关': ['tenyunw_llm_api'],
+  // },
 }
 
 const workerConfig: WorkerConfig = {
-  // Define all your monitors here
+  // [可选] 状态未变化时最多每 N 分钟写一次 D1，默认 3，用于压低写入量
+  // kvWriteCooldownMinutes: 3,
+
   monitors: [
-    // Example HTTP Monitor
+    // 站点可达性：HTTP GET，返回 200 视为正常
     {
-      // `id` should be unique, history will be kept if the `id` remains constant
-      id: 'foo_monitor',
-      // `name` is used at status page and callback message
-      name: 'My API Monitor',
-      // `method` should be a valid HTTP Method
+      id: 'abyssai_site',
+      name: 'dev.abyssai.sg',
       method: 'GET',
-      // `target` is a valid URL
       target: 'https://dev.abyssai.sg/',
-      // [OPTIONAL] `tooltip` is ONLY used at status page to show a tooltip
-      tooltip: 'This is a tooltip for this monitor',
-      // [OPTIONAL] `statusPageLink` is ONLY used for clickable link at status page
-      statusPageLink: 'https://example.com',
-      // [OPTIONAL] `expectedCodes` is an array of acceptable HTTP response codes, if not specified, default to 2xx
+      statusPageLink: 'https://dev.abyssai.sg/',
+      tooltip: 'HTTP GET，期望 200',
       expectedCodes: [200],
-      // [OPTIONAL] `timeout` in millisecond, if not specified, default to 10000
       timeout: 10000,
-      // [OPTIONAL] headers to be sent
       headers: {
         'User-Agent': 'Uptimeflare',
-        Authorization: 'Bearer YOUR_TOKEN_HERE',
       },
-      // [OPTIONAL] body to be sent (require POST/PUT/PATCH method)
-      // body: 'Hello, world!',
-      // [OPTIONAL] if specified, the response must contains the keyword to be considered as operational.
-      // responseKeyword: 'success',
-      // [OPTIONAL] if specified, the response must NOT contains the keyword to be considered as operational.
-      // responseForbiddenKeyword: 'bad gateway',
-      // [OPTIONAL] if specified, will call the check proxy to check the monitor, mainly for geo-specific checks
-      // refer to docs https://github.com/lyc8503/UptimeFlare/wiki/Check-proxy-setup before setting this value
-      // currently supports `worker://`, `globalping://` and `http(s)://` proxies
-      // checkProxy: 'worker://weur',
-      // [OPTIONAL] if true, the check will fallback to local if the specified proxy is down
-      // checkProxyFallback: true,
     },
-    // Example TCP Monitor
+    // 大模型网关端口连通性：TCP 探测，只证明端口开着（不校验 HTTP 状态）
     {
-      id: 'test_tcp_monitor',
-      name: 'Example TCP Monitor',
-      // `method` should be `TCP_PING` for tcp monitors
+      id: 'tenyunw_llm_api',
+      name: 'Tenyunw LLM API (112.90.156.82:61180)',
       method: 'TCP_PING',
-      // `target` should be `host:port` for tcp monitors
-      target: '1.2.3.4:22',
-      tooltip: 'My production server SSH',
-      statusPageLink: 'https://example.com',
+      target: '112.90.156.82:61180',
+      tooltip: 'TCP 端口探测，5 秒超时',
       timeout: 5000,
     },
+
+    // ---- 需要校验接口真实响应时，把下面这段打开并按需改写 ----
+    // ⚠️ 本文件会随仓库公开（ChairmanSZ/UptimeFlare 目前是 public），
+    //    不要把真实 API Key 写进来；确实要带鉴权头，先把仓库改成 private。
+    // {
+    //   id: 'tenyunw_llm_api_http',
+    //   name: 'Tenyunw LLM API (HTTP)',
+    //   method: 'POST',
+    //   target: 'http://112.90.156.82:61180/v1/chat/completions',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     Authorization: 'Bearer <填你的 key>',
+    //   },
+    //   body: '{"model":"<模型名>","messages":[{"role":"user","content":"ping"}],"max_tokens":1}',
+    //   // 无鉴权时接口通常返回 401，所以把 401 也算作“服务活着”
+    //   expectedCodes: [200, 401],
+    //   timeout: 15000,
+    //   // [可选] 指定探测地区（需额外配置 check proxy），见 Wiki: Check-proxy-setup
+    //   // checkProxy: 'worker://weur',
+    //   // checkProxyFallback: true,
+    // },
   ],
-  // [Optional] Notification settings
+
+  // [可选] 通知设置。暂时留空（不接 webhook），状态页照常工作
   notification: {
-    // [Optional] Notification webhook settings, if not specified, no notification will be sent
-    // More info at Wiki: https://github.com/lyc8503/UptimeFlare/wiki/Setup-notification
-    webhook: {
-      // [Required] webhook URL (example: Telegram Bot API)
-      url: 'https://api.telegram.org/bot123456:ABCDEF/sendMessage',
-      // [Optional] HTTP method, default to 'GET' for payloadType=param, 'POST' otherwise
-      // method: 'POST',
-      // [Optional] headers to be sent
-      // headers: {
-      //   foo: 'bar',
-      // },
-      // [Required] Specify how to encode the payload
-      // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
-      // 'param': append url-encoded payload to URL search parameters
-      // 'json': POST json payload as body, set content-type header to 'application/json'
-      // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
-      payloadType: 'x-www-form-urlencoded',
-      // [Required] payload to be sent
-      // $MSG will be replaced with the human-readable notification message
-      payload: {
-        chat_id: 12345678,
-        text: '$MSG',
-      },
-      // [Optional] timeout calling this webhook, in millisecond, default to 5000
-      timeout: 10000,
-    },
-    // [Optional] timezone used in notification messages, default to "Etc/GMT"
     timeZone: 'Asia/Shanghai',
-    // [Optional] grace period in minutes before sending a notification
-    // notification will be sent only if the monitor is down for N continuous checks after the initial failure
-    // if not specified, notification will be sent immediately
+    // 连续 N 分钟异常后才发通知，避免抖动误报
     gracePeriod: 5,
+    // 要接告警时取消注释并填入真实地址（Telegram / 钉钉 / Bark / 企业微信 均可，见 Wiki）
+    // webhook: {
+    //   url: 'https://api.telegram.org/bot<BOT_TOKEN>/sendMessage',
+    //   method: 'POST',
+    //   payloadType: 'x-www-form-urlencoded',
+    //   payload: {
+    //     chat_id: <CHAT_ID>,
+    //     text: '$MSG',
+    //   },
+    //   timeout: 10000,
+    // },
+    // [可选] 只想让部分监控发通知时，列出它们的 id
+    // skipNotificationIds: [],
+    // [可选] 同一次故障中错误信息变化时不重复发通知
+    // skipErrorChangeNotification: true,
   },
 }
 
-// You can define multiple maintenances here
-// During maintenance, an alert will be shown at status page
-// Also, related downtime notifications will be skipped (if any)
-// Of course, you can leave it empty if you don't need this feature
-
-// const maintenances: MaintenanceConfig[] = []
-
-const maintenances: MaintenanceConfig[] = [
-  {
-    // [Optional] Monitor IDs to be affected by this maintenance
-    monitors: ['foo_monitor', 'bar_monitor'],
-    // [Optional] default to "Scheduled Maintenance" if not specified
-    title: 'Test Maintenance',
-    // Description of the maintenance, will be shown at status page
-    body: 'This is a test maintenance, server software upgrade',
-    // Start time of the maintenance, in UNIX timestamp or ISO 8601 format
-    start: '2020-01-01T00:00:00+08:00',
-    // [Optional] end time of the maintenance, in UNIX timestamp or ISO 8601 format
-    // if not specified, the maintenance will be considered as on-going
-    end: '2050-01-01T00:00:00+08:00',
-    // [Optional] color of the maintenance alert at status page, default to "yellow"
-    color: 'blue',
-  },
-]
+// 计划维护：平时保持空数组（页面不会出现维护横幅）
+const maintenances: MaintenanceConfig[] = []
+// 需要时按下面格式补一条（时间段内不告警，页头显示维护提示）
+// const maintenances: MaintenanceConfig[] = [
+//   {
+//     monitors: ['abyssai_site'],
+//     title: '计划维护：站点升级',
+//     body: '预计 30 分钟，期间状态页可能出现抖动',
+//     start: '2026-11-01T02:00:00+08:00',
+//     end: '2026-11-01T02:30:00+08:00',
+//     color: 'blue',
+//   },
+// ]
 
 // Don't edit this line
 export { maintenances, pageConfig, workerConfig }
