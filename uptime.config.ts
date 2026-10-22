@@ -36,6 +36,13 @@ const workerConfig: WorkerConfig = {
       headers: {
         'User-Agent': 'Uptimeflare',
       },
+      // 从东北亚机房发起探测（DurableObject locationHint，可选项只有区域：
+      // wnam / enam / sam / weur / eeur / apac / apac-ne / apac-se / oc / afr / me）
+      // 只对小写区域参数生效，不能填 hkg / pek 这类机场三字码；
+      // 实际落在哪个 colo，以状态页显示的 location 为准
+      checkProxy: 'worker://apac-ne',
+      // 指定区域不可用时，回落到 cron 所在机房再测一次
+      checkProxyFallback: true,
     },
     // 大模型网关端口连通性：TCP 探测，只证明端口开着（不校验 HTTP 状态）
     {
@@ -45,6 +52,9 @@ const workerConfig: WorkerConfig = {
       target: '112.90.156.82:61180',
       tooltip: 'TCP 端口探测，5 秒超时',
       timeout: 5000,
+      // 同样从东北亚机房发起（TCP_PING 也支持 checkProxy）
+      checkProxy: 'worker://apac-ne',
+      checkProxyFallback: true,
     },
 
     // ---- 需要校验接口真实响应时，把下面这段打开并按需改写 ----
